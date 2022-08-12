@@ -18,7 +18,6 @@ for step in range(100):
     time.sleep(0.02)
 env.close();
 """
-
 def create_bins(num_bins_per_action = 10):
     bins_car_position = np.linspace(-1.2, 0.6, num_bins_per_action)
     bins_car_velocity = np.linspace(-0.07, 0.07, num_bins_per_action)
