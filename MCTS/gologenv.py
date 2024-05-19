@@ -71,7 +71,6 @@ class GologEnvironment(gym.Env):
         args = [random.choice(domain) for domain in action.arg_domains]
         #only print during rendering
         #print(f"Executing action {action.name} with arguments {args}")
-        self.last_action_rend = f"Executing action {action.name} with arguments {args}"
         action_executed = self.state.execute_action(action.name, *args)
         observation = self._get_observation()
         reward = self._calculate_reward()
