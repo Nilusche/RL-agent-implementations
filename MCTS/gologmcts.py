@@ -94,12 +94,14 @@ class GologNode:
 
     def next(self):
         if self.done:
-            raise ValueError("game has ended")
+            return None, None
         if not self.child:
-            raise ValueError('no children found and game hasn\'t ended')
+            return None, None
         child = self.child
         max_N = max(node.N for node in child.values())
         max_children = [c for a, c in child.items() if c.N == max_N]
+        if not max_children:
+            return None, None
         max_child = random.choice(max_children)
         return max_child, max_child.action_index
 
@@ -107,6 +109,9 @@ def Policy_Player_MCTS(mytree, explore_count):
     for i in range(explore_count):
         mytree.explore()
     next_tree, next_action = mytree.next()
+    if next_tree is None:
+        # Handle dead-end gracefully by backtracking
+        return None, None
     next_tree.detach_parent()
     return next_tree, next_action
 
@@ -126,19 +131,11 @@ state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
 state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
 stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
 state.add_action(stack_action)
-
-
 env = GologEnvironment(state)
-
 # Run MCTS with Golog environment
 episodes = 10
 rewards = []
-explore_count = 10
-
-# Run MCTS with Golog environment
-episodes = 10
-rewards = []
-explore_count = 100
+explore_count = 300
 
 for e in range(episodes):
     reward_e = 0
@@ -150,20 +147,21 @@ for e in range(episodes):
     print('Episode #' + str(e+1))
     actions_taken = []
     while not done:
-        try:
-            mytree, action = Policy_Player_MCTS(mytree, explore_count)
-            actions_taken.append((mytree.state.actions[action].name, mytree.state.actions[action].arg_domains))
-            observation, reward, done, _ = game.step(action)
-            reward_e += reward
-            game.render()
-        except ValueError as ve:
-            print(ve)
+        mytree, action = Policy_Player_MCTS(mytree, explore_count)
+        if mytree is None:
+            print("No valid children found, backtracking...")
             break
+        specific_args = [random.choice(domain) for domain in mytree.state.actions[action].arg_domains]
+        actions_taken.append((mytree.state.actions[action].name, specific_args))
+        observation, reward, done, _ = game.step(action)
+        reward_e += reward
+        game.render()
         if done:
             print('Total reward:', reward_e)
             print('Actions taken:', actions_taken)
             game.close()
             break
+        
 
     rewards.append(reward_e)
 
