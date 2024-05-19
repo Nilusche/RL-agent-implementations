@@ -9,6 +9,7 @@ class Fluent:
         self.domain = domain
         self.value = initial_value
 
+
     def set_value(self, new_value):
         if new_value in self.domain:
             self.value = new_value
@@ -57,6 +58,7 @@ class GologEnvironment(gym.Env):
         self.observation_space = self._get_observation_space()
         self.done = False
         self.info = {}
+        self.last_action_rend = ""
 
     def reset(self):
         self.state = copy.deepcopy(self.initial_state)
@@ -67,7 +69,9 @@ class GologEnvironment(gym.Env):
     def step(self, action_index):
         action = self.state.actions[action_index]
         args = [random.choice(domain) for domain in action.arg_domains]
-        print(f"Executing action: {action.name} with arguments {args}")
+        #only print during rendering
+        #print(f"Executing action {action.name} with arguments {args}")
+        self.last_action_rend = f"Executing action {action.name} with arguments {args}"
         action_executed = self.state.execute_action(action.name, *args)
         observation = self._get_observation()
         reward = self._calculate_reward()
@@ -108,41 +112,53 @@ class GologEnvironment(gym.Env):
         for fluent_name, value in state.items():
             observation[fluent_name] = self.state.fluents[fluent_name].domain.index(value)
         return observation
+    
+    def render(self, mode='human'):
+        print(self.last_action_rend)
+        state_representation = {}
+        for block in self.state.symbols['block']:
+            state_representation[block] = self.state.fluents[f'loc({block})'].value
+        print("Current State:")
+        for block, location in state_representation.items():
+            print(f"Block {block} is on {location}")
+        
+    def close(self):
+        print("Closing environment...")
 
-# Define the precondition and effect functions to use the current state
-def stack_precondition(state, x, y):
-    return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
+# # Define the precondition and effect functions to use the current state
+# def stack_precondition(state, x, y):
+#     return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
 
-def stack_effect(state, x, y):
-    state.fluents[f'loc({x})'].set_value(y)
+# def stack_effect(state, x, y):
+#     state.fluents[f'loc({x})'].set_value(y)
 
-# Initialize the GologState for Blocksworld
-state = GologState()
-state.add_symbol('block', ['a', 'b', 'c'])
-state.add_symbol('location', ['a', 'b', 'c', 'table'])
+# # Initialize the GologState for Blocksworld
+# state = GologState()
+# state.add_symbol('block', ['a', 'b', 'c'])
+# state.add_symbol('location', ['a', 'b', 'c', 'table'])
 
-state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
-state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
-state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
+# state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
+# state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
+# state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
 
-# Create the stack action
-stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
-state.add_action(stack_action)
+# # Create the stack action
+# stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
+# state.add_action(stack_action)
 
-# Initialize the GologEnvironment
-env = GologEnvironment(state)
+# # Initialize the GologEnvironment
+# env = GologEnvironment(state)
 
-# Example usage with a random policy
-observation = env.reset()
-print("Initial Observation:", observation)
-state = env.observation_to_state(observation)
-print("Initial State:", state)
-done = False
-while not done:
-    action_index = env.action_space.sample()  # Randomly sample an action index
-    print("Selected Action Index:", action_index)
-    observation, reward, done, info = env.step(action_index)
-    print("Observation:", observation)
-    print("State:", env.observation_to_state(observation))
-    print("Reward:", reward)
-    print("Done:", done)
+# # Example usage with a random policy
+# observation = env.reset()
+# print("Initial Observation:", observation)
+# state = env.observation_to_state(observation)
+# print("Initial State:", state)
+# done = False
+# while not done:
+#     action_index = env.action_space.sample()  # Randomly sample an action index
+#     print("Selected Action Index:", action_index)
+#     observation, reward, done, info = env.step(action_index)
+#     print("Observation:", observation)
+#     print("State:", env.observation_to_state(observation))
+#     print("Reward:", reward)
+#     print("Done:", done)
