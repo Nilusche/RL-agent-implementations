@@ -3,21 +3,14 @@ from gym import spaces
 import random
 import copy
 
-class Fluent:
-    def __init__(self, name, domain, initial_value):
-        self.name = name
+class GologFluent:
+    def __init__(self, domain, value):
         self.domain = domain
-        self.value = initial_value
+        self.value = value
 
-
-    def set_value(self, new_value):
-        if new_value in self.domain:
-            self.value = new_value
-        else:
-            raise ValueError(f"Value {new_value} not in domain {self.domain}")
-
-    def get_value_index(self):
-        return self.domain.index(self.value)
+    def set_value(self, value):
+        if value in self.domain:
+            self.value = value
 
 class GologState:
     def __init__(self):
@@ -27,15 +20,15 @@ class GologState:
 
     def add_symbol(self, symbol, domain):
         self.symbols[symbol] = domain
-
-    def add_fluent(self, name, domain, initial_value):
-        self.fluents[name] = Fluent(name, domain, initial_value)
+    
+    def add_fluent(self, fluent, domain, initial_value):
+        self.fluents[fluent] = GologFluent(domain, initial_value)
 
     def add_action(self, action):
         self.actions.append(action)
-
+    
     def execute_action(self, action_name, *args):
-        for action in self.actions:
+        for action in self.actions: 
             if action.name == action_name:
                 if action.precondition(self, *args):
                     action.effect(self, *args)
@@ -52,77 +45,48 @@ class GologAction:
 class GologEnvironment(gym.Env):
     def __init__(self, state):
         super(GologEnvironment, self).__init__()
-        self.initial_state = copy.deepcopy(state)
-        self.state = copy.deepcopy(state)
+        self.state = state
         self.action_space = spaces.Discrete(len(state.actions))
-        self.observation_space = self._get_observation_space()
+        self.observation_space = spaces.Discrete(len(state.fluents))
+        self.reward_range = (-1, 1)
         self.done = False
-        self.info = {}
-        self.last_action_rend = ""
+        self.reset()
 
     def reset(self):
-        self.state = copy.deepcopy(self.initial_state)
+        # Reset to initial state
         self.done = False
-        self.info = {}
-        return self._get_observation()
-
-    def step(self, action_index):
-        action = self.state.actions[action_index]
-        args = [random.choice(domain) for domain in action.arg_domains]
-        #only print during rendering
-        #print(f"Executing action {action.name} with arguments {args}")
-        action_executed = self.state.execute_action(action.name, *args)
-        observation = self._get_observation()
-        reward = self._calculate_reward()
-        self.done = self.goal_condition()
-        return observation, reward, self.done, self.info
-
-    def _get_observation_space(self):
-        observation_space = {}
-        for fluent in self.state.fluents.values():
-            observation_space[fluent.name] = spaces.Discrete(len(fluent.domain))
-        return spaces.Dict(observation_space)
-
+        self.state = copy.deepcopy(self.state)
+        return self.state
+    
     def _get_observation(self):
         observation = {}
-        for fluent in self.state.fluents.values():
-            observation[fluent.name] = fluent.get_value_index()
+        for fluent in self.state.fluents:
+            observation[fluent] = self.state.fluents[fluent].value
         return observation
 
-    def _calculate_reward(self):
-        if self.goal_condition():
-            return 100
+    def step(self, action):
+        action_index = action
+        action = self.state.actions[action_index]
+        args = [random.choice(domain) for domain in action.arg_domains]
+        #print(f"Executing action {action.name} with args {args}")
+        if action.precondition(self.state, *args):
+            action.effect(self.state, *args)
+            reward = 1 if self._check_goal() else -1
+            self.done = self._check_goal()
+            return self._get_observation(), reward, self.done, {}
         else:
-            return -1
+            return self._get_observation(), -1, self.done, {}
 
-    def goal_condition(self):
-        return self.state.fluents['loc(a)'].value == 'table' and \
-               self.state.fluents['loc(b)'].value == 'a' and \
-               self.state.fluents['loc(c)'].value == 'b'
+    def _check_goal(self):
+        return self.state.fluents['loc(a)'].value == 'table' and self.state.fluents['loc(b)'].value == 'a' and self.state.fluents['loc(c)'].value == 'b'
 
-    def observation_to_state(self, observation):
-        state = {}
-        for fluent_name, index in observation.items():
-            state[fluent_name] = self.state.fluents[fluent_name].domain[index]
-        return state
-
-    def state_to_observation(self, state):
-        observation = {}
-        for fluent_name, value in state.items():
-            observation[fluent_name] = self.state.fluents[fluent_name].domain.index(value)
-        return observation
-    
     def render(self, mode='human'):
-        print(self.last_action_rend)
-        state_representation = {}
-        for block in self.state.symbols['block']:
-            state_representation[block] = self.state.fluents[f'loc({block})'].value
+        state_description = []
+        for fluent, value in self.state.fluents.items():
+            state_description.append(f"{fluent} is {value.value}")
         print("Current State:")
-        for block, location in state_representation.items():
-            print(f"Block {block} is on {location}")
-        
-    def close(self):
-        print("Closing environment...")
+        print("\n".join(state_description))
+
 
 # # Define the precondition and effect functions to use the current state
 # def stack_precondition(state, x, y):
@@ -147,17 +111,11 @@ class GologEnvironment(gym.Env):
 # # Initialize the GologEnvironment
 # env = GologEnvironment(state)
 
-# # Example usage with a random policy
-# observation = env.reset()
-# print("Initial Observation:", observation)
-# state = env.observation_to_state(observation)
-# print("Initial State:", state)
+
 # done = False
 # while not done:
 #     action_index = env.action_space.sample()  # Randomly sample an action index
-#     print("Selected Action Index:", action_index)
+    
+    
 #     observation, reward, done, info = env.step(action_index)
-#     print("Observation:", observation)
-#     print("State:", env.observation_to_state(observation))
-#     print("Reward:", reward)
-#     print("Done:", done)
+#     env.render()
