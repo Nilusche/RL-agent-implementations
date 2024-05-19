@@ -1,6 +1,7 @@
 import gym
 from gym import spaces
 import random
+import copy
 
 class Fluent:
     def __init__(self, name, domain, initial_value):
@@ -35,8 +36,8 @@ class GologState:
     def execute_action(self, action_name, *args):
         for action in self.actions:
             if action.name == action_name:
-                if action.precondition(*args):
-                    action.effect(*args)
+                if action.precondition(self, *args):
+                    action.effect(self, *args)
                     return True
         return False
 
@@ -47,23 +48,18 @@ class GologAction:
         self.effect = effect
         self.arg_domains = arg_domains
 
-class GologGoal:
-    def __init__(self, condition):
-        self.condition = condition
-
 class GologEnvironment(gym.Env):
-    def __init__(self, state, goal):
+    def __init__(self, state):
         super(GologEnvironment, self).__init__()
-        self.initial_state = state
-        self.state = state
-        self.goal = goal
+        self.initial_state = copy.deepcopy(state)
+        self.state = copy.deepcopy(state)
         self.action_space = spaces.Discrete(len(state.actions))
         self.observation_space = self._get_observation_space()
         self.done = False
         self.info = {}
 
     def reset(self):
-        self.state = self.initial_state
+        self.state = copy.deepcopy(self.initial_state)
         self.done = False
         self.info = {}
         return self._get_observation()
@@ -71,6 +67,7 @@ class GologEnvironment(gym.Env):
     def step(self, action_index):
         action = self.state.actions[action_index]
         args = [random.choice(domain) for domain in action.arg_domains]
+        print(f"Executing action: {action.name} with arguments {args}")
         action_executed = self.state.execute_action(action.name, *args)
         observation = self._get_observation()
         reward = self._calculate_reward()
@@ -112,6 +109,13 @@ class GologEnvironment(gym.Env):
             observation[fluent_name] = self.state.fluents[fluent_name].domain.index(value)
         return observation
 
+# Define the precondition and effect functions to use the current state
+def stack_precondition(state, x, y):
+    return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
+
+def stack_effect(state, x, y):
+    state.fluents[f'loc({x})'].set_value(y)
+
 # Initialize the GologState for Blocksworld
 state = GologState()
 state.add_symbol('block', ['a', 'b', 'c'])
@@ -121,20 +125,12 @@ state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
 state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
 state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
 
-def stack_precondition(x, y):
-    return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
-
-def stack_effect(x, y):
-    state.fluents[f'loc({x})'].set_value(y)
-
+# Create the stack action
 stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
 state.add_action(stack_action)
 
-# Define the goal for Blocksworld
-goal = GologGoal(state.goal_condition)
-
 # Initialize the GologEnvironment
-env = GologEnvironment(state, goal)
+env = GologEnvironment(state)
 
 # Example usage with a random policy
 observation = env.reset()
