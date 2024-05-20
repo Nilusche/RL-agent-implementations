@@ -43,12 +43,12 @@ class GologAction:
         self.arg_domains = arg_domains
 
 class GologEnvironment(gym.Env):
-    def __init__(self, state):
+    def __init__(self, state, goal_function):
         super(GologEnvironment, self).__init__()
         self.state = state
+        self.goal_function = goal_function
         self.action_space = spaces.Discrete(len(state.actions))
         self.observation_space = spaces.Discrete(len(state.fluents))
-        self.reward_range = (-1, 1)
         self.done = False
         self.reset()
 
@@ -71,14 +71,11 @@ class GologEnvironment(gym.Env):
         #print(f"Executing action {action.name} with args {args}")
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
-            reward = 1 if self._check_goal() else -1
-            self.done = self._check_goal()
+            reward = 100 if self.goal_function(self.state) else -1
+            self.done = self.goal_function(self.state)
             return self._get_observation(), reward, self.done, {}
         else:
             return self._get_observation(), -1, self.done, {}
-
-    def _check_goal(self):
-        return self.state.fluents['loc(a)'].value == 'table' and self.state.fluents['loc(b)'].value == 'a' and self.state.fluents['loc(c)'].value == 'b'
 
     def render(self, mode='human'):
         state_description = []
@@ -88,34 +85,36 @@ class GologEnvironment(gym.Env):
         print("\n".join(state_description))
 
 
-# # Define the precondition and effect functions to use the current state
-# def stack_precondition(state, x, y):
-#     return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
+# Define the precondition and effect functions to use the current state
+def stack_precondition(state, x, y):
+    return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
 
-# def stack_effect(state, x, y):
-#     state.fluents[f'loc({x})'].set_value(y)
+def stack_effect(state, x, y):
+    state.fluents[f'loc({x})'].set_value(y)
 
-# # Initialize the GologState for Blocksworld
-# state = GologState()
-# state.add_symbol('block', ['a', 'b', 'c'])
-# state.add_symbol('location', ['a', 'b', 'c', 'table'])
+def blocksworld_goal(state):
+    return state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value == 'b'
 
-# state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
-# state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
-# state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
+# Initialize the GologState for Blocksworld
+state = GologState()
+state.add_symbol('block', ['a', 'b', 'c'])
+state.add_symbol('location', ['a', 'b', 'c', 'table'])
 
-# # Create the stack action
-# stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
-# state.add_action(stack_action)
+state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
+state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
+state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
 
-# # Initialize the GologEnvironment
-# env = GologEnvironment(state)
+# Create the stack action
+stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
+state.add_action(stack_action)
 
+# Initialize the GologEnvironment
+env = GologEnvironment(state, blocksworld_goal)
 
-# done = False
-# while not done:
-#     action_index = env.action_space.sample()  # Randomly sample an action index
+done = False
+while not done:
+    action_index = env.action_space.sample()  # Randomly sample an action index
     
     
-#     observation, reward, done, info = env.step(action_index)
-#     env.render()
+    observation, reward, done, info = env.step(action_index)
+    env.render()
