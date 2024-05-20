@@ -86,35 +86,35 @@ class GologEnvironment(gym.Env):
 
 
 # Define the precondition and effect functions to use the current state
-def stack_precondition(state, x, y):
-    return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
+# def stack_precondition(state, x, y):
+#     return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
 
-def stack_effect(state, x, y):
-    state.fluents[f'loc({x})'].set_value(y)
+# def stack_effect(state, x, y):
+#     state.fluents[f'loc({x})'].set_value(y)
 
-def blocksworld_goal(state):
-    return state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value == 'b'
+# def blocksworld_goal(state):
+#     return state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value == 'b'
 
-# Initialize the GologState for Blocksworld
-state = GologState()
-state.add_symbol('block', ['a', 'b', 'c'])
-state.add_symbol('location', ['a', 'b', 'c', 'table'])
+# # Initialize the GologState for Blocksworld
+# state = GologState()
+# state.add_symbol('block', ['a', 'b', 'c'])
+# state.add_symbol('location', ['a', 'b', 'c', 'table'])
 
-state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
-state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
-state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
+# state.add_fluent('loc(a)', ['a', 'b', 'c', 'table'], 'c')
+# state.add_fluent('loc(b)', ['a', 'b', 'c', 'table'], 'table')
+# state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
 
-# Create the stack action
-stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
-state.add_action(stack_action)
+# # Create the stack action
+# stack_action = GologAction('stack', stack_precondition, stack_effect, [state.symbols['block'], state.symbols['location']])
+# state.add_action(stack_action)
 
-# Initialize the GologEnvironment
-env = GologEnvironment(state, blocksworld_goal)
+# # Initialize the GologEnvironment
+# env = GologEnvironment(state, blocksworld_goal)
 
-done = False
-while not done:
-    action_index = env.action_space.sample()  # Randomly sample an action index
+# done = False
+# while not done:
+#     action_index = env.action_space.sample()  # Randomly sample an action index
     
     
-    observation, reward, done, info = env.step(action_index)
-    env.render()
+#     observation, reward, done, info = env.step(action_index)
+#     env.render()
