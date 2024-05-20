@@ -43,20 +43,21 @@ class GologAction:
         self.arg_domains = arg_domains
 
 class GologEnvironment(gym.Env):
-    def __init__(self, state, goal_function):
+    def __init__(self, state, goal_function, reward_function=None):
         super(GologEnvironment, self).__init__()
         self.state = state
         self.goal_function = goal_function
+        self.reward_function = reward_function if reward_function else self.default_reward_function
         self.action_space = spaces.Discrete(len(state.actions))
         self.observation_space = spaces.Discrete(len(state.fluents))
         self.done = False
-        self.initial_state = copy.deepcopy(state)
         self.reset()
 
     def reset(self):
+        # Reset to initial state
         self.done = False
-        self.state = copy.deepcopy(self.initial_state)
-        return self._get_observation()
+        self.state = copy.deepcopy(self.state)
+        return self.state
     
     def _get_observation(self):
         observation = {}
@@ -64,16 +65,19 @@ class GologEnvironment(gym.Env):
             observation[fluent] = self.state.fluents[fluent].value
         return observation
 
-    def step(self, action_with_args):
-        action_index, args = action_with_args
+    def step(self, action):
+        action_index, args = action
         action = self.state.actions[action_index]
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
-            reward = 100 if self.goal_function(self.state) else -1
+            reward = self.reward_function(self.state)
             self.done = self.goal_function(self.state)
             return self._get_observation(), reward, self.done, {}
         else:
             return self._get_observation(), -1, self.done, {}
+
+    def default_reward_function(self, state):
+        return 100 if self.goal_function(state) else -1
 
     def render(self, mode='human'):
         state_description = []
@@ -81,6 +85,8 @@ class GologEnvironment(gym.Env):
             state_description.append(f"{fluent} is {value.value}")
         print("Current State:")
         print("\n".join(state_description))
+
+
 
 
 # Define the precondition and effect functions to use the current state
