@@ -50,13 +50,13 @@ class GologEnvironment(gym.Env):
         self.action_space = spaces.Discrete(len(state.actions))
         self.observation_space = spaces.Discrete(len(state.fluents))
         self.done = False
+        self.initial_state = copy.deepcopy(state)
         self.reset()
 
     def reset(self):
-        # Reset to initial state
         self.done = False
-        self.state = copy.deepcopy(self.state)
-        return self.state
+        self.state = copy.deepcopy(self.initial_state)
+        return self._get_observation()
     
     def _get_observation(self):
         observation = {}
@@ -64,11 +64,9 @@ class GologEnvironment(gym.Env):
             observation[fluent] = self.state.fluents[fluent].value
         return observation
 
-    def step(self, action):
-        action_index = action
+    def step(self, action_with_args):
+        action_index, args = action_with_args
         action = self.state.actions[action_index]
-        args = [random.choice(domain) for domain in action.arg_domains]
-        #print(f"Executing action {action.name} with args {args}")
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
             reward = 100 if self.goal_function(self.state) else -1
