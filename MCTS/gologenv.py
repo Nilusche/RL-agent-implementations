@@ -3,6 +3,8 @@ from gym import spaces
 import random
 import copy
 from collections import deque
+from math import sqrt, log
+import pickle
 
 class GologFluent:
     def __init__(self, domain, value):
