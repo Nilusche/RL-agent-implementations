@@ -1,10 +1,8 @@
 import gym
 from gym import spaces
-import random
 import copy
 from collections import deque
 from math import sqrt, log
-import pickle
 
 class GologFluent:
     def __init__(self, domain, value):
@@ -33,12 +31,11 @@ class GologState:
     def add_action(self, action):
         self.actions.append(action)
     
-    def execute_action(self, action_name, *args):
-        for action in self.actions: 
-            if action.name == action_name:
-                if action.precondition(self, *args):
-                    action.effect(self, *args)
-                    return True
+    def execute_action(self, action_index, *args):
+        action = self.actions[action_index]
+        if action.precondition(self, *args):
+            action.effect(self, *args)
+            return True
         return False
 
     def __hash__(self):
@@ -67,7 +64,6 @@ class GologEnvironment(gym.Env):
         self.reset()
 
     def reset(self):
-        # Reset to initial state
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
         return self._get_observation()
