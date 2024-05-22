@@ -1,8 +1,7 @@
 import gym
 from gym import spaces
 import copy
-from collections import deque
-from math import sqrt, log
+from itertools import product
 
 class GologFluent:
     def __init__(self, domain, value):
@@ -51,14 +50,21 @@ class GologAction:
         self.effect = effect
         self.arg_domains = arg_domains
 
+    def generate_valid_args(self, state):
+        from itertools import product
+        domains = [state.symbols[domain] for domain in self.arg_domains]
+        return list(product(*domains))
+
 class GologEnvironment(gym.Env):
-    def __init__(self, initial_state, goal_function, reward_function=None):
+    def __init__(self, initial_state, goal_function, actions, reward_function=None):
         super(GologEnvironment, self).__init__()
         self.initial_state = initial_state
         self.state = copy.deepcopy(initial_state)
         self.goal_function = goal_function
         self.reward_function = reward_function if reward_function else self.default_reward_function
-        self.action_space = spaces.Discrete(len(initial_state.actions))
+        self.actions = actions
+        self.state.actions = actions  # Ensure actions are accessible via state
+        self.action_space = spaces.Discrete(len(actions))
         self.observation_space = spaces.Discrete(len(initial_state.fluents))
         self.done = False
         self.reset()
@@ -66,6 +72,7 @@ class GologEnvironment(gym.Env):
     def reset(self):
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
+        self.state.actions = self.actions  # Ensure actions are accessible via state
         return self._get_observation()
     
     def _get_observation(self):
@@ -94,3 +101,7 @@ class GologEnvironment(gym.Env):
             state_description.append(f"{fluent} is {value.value}")
         print("Current State:")
         print("\n".join(state_description))
+
+    def generate_valid_args(self, action_index):
+        action = self.actions[action_index]
+        return action.generate_valid_args(self.state)
