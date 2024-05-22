@@ -1,4 +1,5 @@
 from gologenv import *
+from collections import deque
 
 
 def stack_precondition(state, x, y):
@@ -21,7 +22,11 @@ initial_state.add_fluent('loc(c)', ['a', 'b', 'c', 'table'], 'b')
 stack_action = GologAction('stack', stack_precondition, stack_effect, [initial_state.symbols['block'], initial_state.symbols['location']])
 initial_state.add_action(stack_action)
 
-env = GologEnvironment(initial_state, blocksworld_goal)
+actions = [
+    GologAction('stack', stack_precondition, stack_effect, ['block', 'location']),
+]
+
+env = GologEnvironment(initial_state, blocksworld_goal, actions)
 
 def bfs_solve(env):
     initial_obs = env.reset()
