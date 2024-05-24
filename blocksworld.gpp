@@ -37,7 +37,6 @@ number function reward() =
     else
         -1
 
-bool function postcond() = goal()
 
 procedure main() {
     mcts(100, reward())
